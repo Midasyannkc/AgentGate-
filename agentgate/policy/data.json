@@ -1,0 +1,16 @@
+{
+  "agents": [
+    {
+      "id": "agent-demo-1",
+      "description": "Demo agent with broader access, for testing the allow path",
+      "allowed_tools": ["get_weather", "list_files"],
+      "rate_limit_per_minute": 30
+    },
+    {
+      "id": "agent-demo-2",
+      "description": "Demo agent with narrow access, for testing the deny path",
+      "allowed_tools": ["get_weather"],
+      "rate_limit_per_minute": 10
+    }
+  ]
+}

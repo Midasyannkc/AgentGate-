@@ -1,0 +1,58 @@
+# The gateway's TLS material is mounted from a Secret that is NOT defined
+# as static YAML here, for the same reason as the OPA policy ConfigMap:
+# these are generated artifacts (certs/generate_certs.sh), not source to
+# check in. Create the secret directly from the generated files:
+#
+#   kubectl create secret generic agentgate-certs \
+#     --from-file=server.crt=certs/generated/server.crt \
+#     --from-file=server.key=certs/generated/server.key \
+#     --from-file=ca.crt=certs/generated/ca.crt \
+#     -n agentgate
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agentgate-gateway
+  namespace: agentgate
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: agentgate-gateway
+  template:
+    metadata:
+      labels:
+        app: agentgate-gateway
+    spec:
+      containers:
+        - name: gateway
+          image: agentgate-gateway:latest  # built by the CI pipeline; see .github/workflows
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8443
+          env:
+            - name: OPA_URL
+              value: "http://opa.agentgate.svc.cluster.local:8181/v1/data/agentgate"
+            - name: BACKEND_URL
+              value: "http://agentgate-backend.agentgate.svc.cluster.local:6000"
+          volumeMounts:
+            - name: certs
+              mountPath: /app/certs/generated
+              readOnly: true
+      volumes:
+        - name: certs
+          secret:
+            secretName: agentgate-certs
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: agentgate-gateway
+  namespace: agentgate
+spec:
+  selector:
+    app: agentgate-gateway
+  ports:
+    - port: 8443
+      targetPort: 8443
+  type: ClusterIP  # deliberately not exposed externally by default — see README on exposing it deliberately
